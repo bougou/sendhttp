@@ -2,30 +2,30 @@
 
 `sendhttp` can make the process of creating golang sdk for http service more easier.
 
-This package defines three interface.
+This package defines three interfaces.
 
 - `Request`
 - `Response`
 - `Client`
 
-And four struct:
+And four structs:
 
 - `BaseRequest`
 - `BaseResponse`
 - `HttpClient`
 - `RestyClient`
 
-The `BaseRequest` struct implemented the `Request` interface.
-So all business request struct just embed `*BaseRequest` into itself.
+The `BaseRequest` struct have implemented the `Request` interface.
+So all business request struct just needs to have the `*BaseRequest` nested.
 
-The `BaseResponse` struct implemented the `Response` interface.
-So all business response struct just embed `*BaseResponse` into itself.
+The `BaseResponse` struct have implemented the `Response` interface.
+So all business response struct just needs to have the `*BaseResponse` nested.
 
-This package also provides two struct `RestyClient` and `HttpClient` which implemented the `Client` interface.
+The `RestyClient` and `HttpClient` structs have implemented the `Client` interface which
+defines a `Send(request Request, response Response) error` method.
 
-The `HttpClient` is based on the `http.Client` of the standard library `net/http`.
-
-The `RestyClient` is based on the `resty.Client` of the `github.com/go-resty/resty/v2`.
+- The `HttpClient` is based on the `http.Client` of the standard library `net/http`.
+- The `RestyClient` is based on the `resty.Client` of the `github.com/go-resty/resty/v2`.
 
 In your business code, you can directly embeds `RestyClient` or `HttpClient` in your own client struct.
 
@@ -99,7 +99,7 @@ type Movie struct {
 }
 ```
 
-3. Define a method
+3. Define a method.
 
 ```go
 func (c *Client) ListMovies(request *ListMoviesRequest) (response *ListMoviesResonse, err error) {
