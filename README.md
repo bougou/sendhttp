@@ -71,6 +71,7 @@ type ListMoviesRequest struct {
 
 func NewListMoviesRequest() *ListMoviesRequest{
   return &ListMoviesRequest{
+    // Must init the BaseRequest, or else you might encounter runtime nil pointer panic
     BaseRequest: sendhttp.NewBaseRequest(),
 
     // init other fields if necessary
@@ -86,6 +87,7 @@ type ListMoviesResonse struct {
 
 func NewListMoviesResponse() *ListMoviesResonse{
   return &ListMoviesResonse{
+    // Must init the BaseResponse, or else you might encounter runtime nil pointer panic
     BaseResponse: sendhttp.NewBaseResponse(),
 
     // init other fields if necessary
@@ -108,6 +110,7 @@ func (c *Client) ListMovies(request *ListMoviesRequest) (response *ListMoviesRes
   // normally your will
   // c.Complete(request)
 
+  // Must init the response object before call Send(request, response), or else you might encounter runtime nil pointer panic
   resonse := NewListMoviesResponse()
   err c.client.Send(request, response)
 
