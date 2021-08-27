@@ -30,20 +30,21 @@ type Request interface {
 	// GetBodyReader() io.Reader
 
 	GetMethod() string
-
 	GetUrl() string
 	GetScheme() string
 	GetDomain() string
 	GetPath() string
 	GetParams() map[string]string
+	GetFormParams() map[string]string
 	GetHeaders() map[string]string
 
+	SetMethod(string)
 	SetUrl(url string)
 	SetScheme(string)
-	SetMethod(string)
 	SetDomain(string)
 	SetPath(string)
-
+	SetParams(map[string]string)
+	SetFormParams(map[string]string)
 	SetHeaders(map[string]string)
 
 	CheckValid() error
@@ -54,7 +55,7 @@ type Request interface {
 
 func GetBody(request Request) (io.Reader, error) {
 	if request.IsContentTypeForm() {
-		return strings.NewReader(GetUrlQueriesEncoded(request.GetParams())), nil
+		return strings.NewReader(GetUrlQueriesEncoded(request.GetFormParams())), nil
 	}
 
 	// default json
@@ -73,8 +74,8 @@ type BaseRequest struct {
 	scheme string
 	domain string
 	path   string
+	params map[string]string
 
-	params     map[string]string
 	formParams map[string]string
 
 	headers map[string]string
@@ -118,13 +119,11 @@ func (r *BaseRequest) GetMethod() string {
 }
 
 func (r *BaseRequest) GetUrl() string {
-	if r.method == GET {
-		return r.GetScheme() + "://" + r.domain + r.path + "?" + GetUrlQueriesEncoded(r.params)
-	} else if r.method == POST {
-		return r.GetScheme() + "://" + r.domain + r.path
-	} else {
-		return ""
+	s := r.scheme + "://" + r.domain + r.path
+	if len(r.params) > 0 {
+		s += "?" + GetUrlQueriesEncoded(r.params)
 	}
+	return s
 }
 
 func (r *BaseRequest) GetScheme() string {
@@ -141,6 +140,10 @@ func (r *BaseRequest) GetPath() string {
 
 func (r *BaseRequest) GetParams() map[string]string {
 	return r.params
+}
+
+func (r *BaseRequest) GetFormParams() map[string]string {
+	return r.formParams
 }
 
 func (r *BaseRequest) GetHeaders() map[string]string {
@@ -210,6 +213,12 @@ func (r *BaseRequest) SetParams(params map[string]string) {
 	}
 }
 
+func (r *BaseRequest) SetFormParams(params map[string]string) {
+	for k, v := range params {
+		r.formParams[k] = v
+	}
+}
+
 func (r *BaseRequest) SetHeaders(headers map[string]string) {
 	for k, v := range headers {
 		r.headers[k] = v
@@ -228,12 +237,10 @@ func (r *BaseRequest) IsContentTypeJSON() bool {
 func ConstructParams(req Request) (err error) {
 	value := reflect.ValueOf(req).Elem()
 	err = flatStructure(value, req, "")
-	//log.Printf("[DEBUG] params=%s", req.GetParams())
 	return
 }
 
 func flatStructure(value reflect.Value, request Request, prefix string) (err error) {
-	//log.Printf("[DEBUG] reflect value: %v", value.Type())
 	valueType := value.Type()
 	for i := 0; i < valueType.NumField(); i++ {
 		tag := valueType.Field(i).Tag

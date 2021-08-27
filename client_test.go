@@ -32,6 +32,7 @@ func newFakeRequest() *fakeRequest {
 	return &fakeRequest{
 		BaseRequest: NewBaseRequest(),
 	}
+
 }
 
 func newFakeResponse() *fakeResponse {
@@ -132,6 +133,43 @@ func TestRestyClient(t *testing.T) {
 	}
 }
 
+func TestHttpClientForm(t *testing.T) {
+	// server.URL returns the randomly listened address, like "http://127.0.0.1:58713"
+	var server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Note, the output contains an extra line break character
+		fmt.Fprintln(w, mockGetResposne)
+	}))
+	defer server.Close()
+
+	c := newFakeHttpClient(server.URL)
+	c.client.SetDebug(true)
+	request := newFakeRequest()
+	request.SetHeaders(map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded",
+	})
+	request.SetParams(map[string]string{
+		"limit":  "10",
+		"offset": "20",
+	})
+	request.SetFormParams(map[string]string{
+		"a": "hello",
+		"b": "100",
+	})
+	c.Complete(request)
+
+	response, err := c.Fake(request)
+	if err != nil {
+		t.Error(err)
+	}
+
+	got := string(response.GetRaw())
+	expected := mockGetResposne + "\n"
+
+	if got != expected {
+		t.Errorf("response not matched, expected: %s, got: %s", expected, got)
+	}
+}
+
 func Test_RestyClientForm(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, mockGetResposne)
@@ -143,6 +181,14 @@ func Test_RestyClientForm(t *testing.T) {
 	request := newFakeRequest()
 	request.SetHeaders(map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
+	})
+	request.SetParams(map[string]string{
+		"limit":  "10",
+		"offset": "20",
+	})
+	request.SetFormParams(map[string]string{
+		"a": "hello",
+		"b": "100:200",
 	})
 	c.Complete(request)
 
