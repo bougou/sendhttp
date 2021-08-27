@@ -1,6 +1,7 @@
 package sendhttp
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -28,36 +29,49 @@ func (c *RestyClient) SetDebug(flag bool) {
 }
 
 func (c *RestyClient) Send(request Request, response Response) error {
-	if c.debug {
-		c.restyClient.EnableTrace()
-	}
-
 	// Note, this is a must.
 	c.restyClient.SetDoNotParseResponse(true)
 
 	restyReq := c.restyClient.R()
 	restyReq.SetHeaders(request.GetHeaders())
 
-	bodyReader, err := request.GetBody()
+	bodyReader, err := GetBody(request)
 	if err != nil {
 		return err
 	}
-	restyReq.SetBody(bodyReader)
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(bodyReader)
+	if err != nil {
+		log.Printf("read request body failed because %s", err)
+		return err
+	}
+	bodyBytes := buf.Bytes()
+	restyReq.SetBody(bodyBytes)
 
+	// the restyReq.RawRequest is ONLY set after restyReq.Execute
 	restyResp, err := restyReq.Execute(request.GetMethod(), request.GetUrl())
+	if err != nil {
+		msg := fmt.Sprintf("request failed, err = %s", err.Error())
+		return errors.New(msg)
+	}
 
 	if c.debug {
-		outbytes, err := httputil.DumpRequest(restyReq.RawRequest, true)
+		// DumpRequest of restyReq.RawRequest does not contain body bytes
+		reqbytes, err := httputil.DumpRequest(restyReq.RawRequest, true)
 		if err != nil {
 			log.Printf("[ERROR] dump request failed because %s", err)
 			return err
 		}
-		log.Printf("[DEBUG] http request = %s", outbytes)
+		log.Printf("[DEBUG] http request:\n%s%s", reqbytes, bodyBytes)
 	}
 
-	if err != nil {
-		msg := fmt.Sprintf("request failed, err = %s", err.Error())
-		return errors.New(msg)
+	if c.debug {
+		resBytes, err := httputil.DumpResponse(restyResp.RawResponse, false)
+		if err != nil {
+			log.Printf("[ERROR] dump response failed because %s", err)
+			return err
+		}
+		log.Printf("[DEBUG] http response:\n%s", resBytes)
 	}
 
 	err = ParseHttpResponse(restyResp.RawResponse, response)

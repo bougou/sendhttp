@@ -31,7 +31,7 @@ func (c *HttpClient) Send(request Request, response Response) error {
 		return err
 	}
 
-	bodyReader, err := request.GetBody()
+	bodyReader, err := GetBody(request)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,6 @@ func (c *HttpClient) Send(request Request, response Response) error {
 	if err != nil {
 		return err
 	}
-
 	for k, v := range request.GetHeaders() {
 		httpRequest.Header.Set(k, v)
 	}

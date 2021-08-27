@@ -37,7 +37,6 @@ type Request interface {
 	GetPath() string
 	GetParams() map[string]string
 	GetHeaders() map[string]string
-	GetBody() (io.Reader, error)
 
 	SetUrl(url string)
 	SetScheme(string)
@@ -48,6 +47,23 @@ type Request interface {
 	SetHeaders(map[string]string)
 
 	CheckValid() error
+
+	IsContentTypeForm() bool
+	IsContentTypeJSON() bool
+}
+
+func GetBody(request Request) (io.Reader, error) {
+	if request.IsContentTypeForm() {
+		return strings.NewReader(GetUrlQueriesEncoded(request.GetParams())), nil
+	}
+
+	// default json
+	reqBody, err := json.Marshal(request)
+	if err != nil {
+		msg := fmt.Sprintf("marshal request failed, %s", err)
+		return nil, errors.New(msg)
+	}
+	return bytes.NewReader(reqBody), nil
 }
 
 type BaseRequest struct {
@@ -137,7 +153,7 @@ func (r *BaseRequest) HasHeader(name string) bool {
 }
 
 func (r *BaseRequest) GetHeader(name string) string {
-	s, _ := r.GetHeaders()[name]
+	s := r.GetHeaders()[name]
 	return s
 }
 
@@ -201,31 +217,11 @@ func (r *BaseRequest) SetHeaders(headers map[string]string) {
 }
 
 func (r *BaseRequest) IsContentTypeForm() bool {
-	if r.GetHeader("Content-Type") == "application/x-www-form-urlencoded" {
-		return true
-	}
-	return false
+	return r.GetHeader("Content-Type") == "application/x-www-form-urlencoded"
 }
 
 func (r *BaseRequest) IsContentTypeJSON() bool {
-	if r.GetHeader("Content-Type") == "application/json" {
-		return true
-	}
-	return false
-}
-
-func (r *BaseRequest) GetBody() (io.Reader, error) {
-	if r.IsContentTypeForm() {
-		return strings.NewReader(GetUrlQueriesEncoded(r.GetParams())), nil
-	}
-
-	// default json
-	reqBody, err := json.Marshal(r)
-	if err != nil {
-		msg := fmt.Sprintf("marshal request failed, %s", err)
-		return nil, errors.New(msg)
-	}
-	return bytes.NewReader(reqBody), nil
+	return r.GetHeader("Content-Type") == "application/json"
 }
 
 // todo
