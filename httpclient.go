@@ -1,8 +1,6 @@
 package sendhttp
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -33,15 +31,18 @@ func (c *HttpClient) Send(request Request, response Response) error {
 		return err
 	}
 
-	reqBody, err := json.Marshal(request)
-	if err != nil {
-		msg := fmt.Sprintf("marshal request failed, %s", err)
-		return errors.New(msg)
-	}
-
-	httpRequest, err := http.NewRequest(request.GetMethod(), request.GetUrl(), bytes.NewReader(reqBody))
+	bodyReader, err := request.GetBody()
 	if err != nil {
 		return err
+	}
+
+	httpRequest, err := http.NewRequest(request.GetMethod(), request.GetUrl(), bodyReader)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range request.GetHeaders() {
+		httpRequest.Header.Set(k, v)
 	}
 
 	if c.debug {
@@ -68,8 +69,6 @@ func (c *HttpClient) Send(request Request, response Response) error {
 		log.Printf("[DEBUG] http response:\n%s", outbytes)
 	}
 
-	response.SetRaw(reqBody)
 	err = ParseHttpResponse(httpResponse, response)
-
 	return err
 }

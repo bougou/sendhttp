@@ -1,7 +1,6 @@
 package sendhttp
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -39,12 +38,11 @@ func (c *RestyClient) Send(request Request, response Response) error {
 	restyReq := c.restyClient.R()
 	restyReq.SetHeaders(request.GetHeaders())
 
-	reqBody, err := json.Marshal(request)
+	bodyReader, err := request.GetBody()
 	if err != nil {
-		msg := fmt.Sprintf("marshal request failed, %s", err)
-		return errors.New(msg)
+		return err
 	}
-	restyReq.SetBody(reqBody)
+	restyReq.SetBody(bodyReader)
 
 	restyResp, err := restyReq.Execute(request.GetMethod(), request.GetUrl())
 

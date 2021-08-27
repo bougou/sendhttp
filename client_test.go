@@ -16,14 +16,14 @@ type fakeResponse struct {
 	MSG           string `json:"msg"`
 }
 
-// fakeClient test HttpClient
-type fakeClient struct {
+// fakeHttpClient test HttpClient
+type fakeHttpClient struct {
 	client *HttpClient
 	url    string
 }
 
-// fakeClient2 test RestyClient
-type fakeClient2 struct {
+// fakeRestyClient test RestyClient
+type fakeRestyClient struct {
 	client *RestyClient
 	url    string
 }
@@ -40,28 +40,28 @@ func newFakeResponse() *fakeResponse {
 	}
 }
 
-func newFakeClient(url string) *fakeClient {
-	return &fakeClient{
+func newFakeHttpClient(url string) *fakeHttpClient {
+	return &fakeHttpClient{
 		client: NewHttpClient(),
 		url:    url,
 	}
 }
 
-func newFakeClient2(url string) *fakeClient2 {
-	return &fakeClient2{
+func newFakeRestyClient(url string) *fakeRestyClient {
+	return &fakeRestyClient{
 		client: NewRestyClient(),
 		url:    url,
 	}
 }
 
-func (c *fakeClient) Complete(r Request) error {
+func (c *fakeHttpClient) Complete(r Request) error {
 	r.SetMethod(GET)
 	r.SetUrl(c.url)
 	r.SetPath("/")
 	return nil
 }
 
-func (c *fakeClient2) Complete(r Request) error {
+func (c *fakeRestyClient) Complete(r Request) error {
 	r.SetMethod(GET)
 	r.SetUrl(c.url)
 	r.SetPath("/")
@@ -69,13 +69,13 @@ func (c *fakeClient2) Complete(r Request) error {
 }
 
 // Fake is normally your exported method for your client
-func (c *fakeClient) Fake(request *fakeRequest) (response *fakeResponse, err error) {
+func (c *fakeHttpClient) Fake(request *fakeRequest) (response *fakeResponse, err error) {
 	response = newFakeResponse()
 	err = c.client.Send(request, response)
 	return
 }
 
-func (c *fakeClient2) Fake(request *fakeRequest) (response *fakeResponse, err error) {
+func (c *fakeRestyClient) Fake(request *fakeRequest) (response *fakeResponse, err error) {
 	response = newFakeResponse()
 	err = c.client.Send(request, response)
 	return
@@ -95,7 +95,8 @@ func TestHttpClient(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := newFakeClient(server.URL)
+	c := newFakeHttpClient(server.URL)
+	c.client.SetDebug(true)
 	request := newFakeRequest()
 	c.Complete(request)
 
@@ -118,7 +119,8 @@ func TestRestyClient(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := newFakeClient2(server.URL)
+	c := newFakeRestyClient(server.URL)
+	c.client.SetDebug(true)
 	request := newFakeRequest()
 	c.Complete(request)
 

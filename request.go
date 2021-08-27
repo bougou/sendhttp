@@ -1,7 +1,11 @@
 package sendhttp
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 
 	//"log"
 
@@ -32,8 +36,8 @@ type Request interface {
 	GetDomain() string
 	GetPath() string
 	GetParams() map[string]string
-
 	GetHeaders() map[string]string
+	GetBody() (io.Reader, error)
 
 	SetUrl(url string)
 	SetScheme(string)
@@ -127,6 +131,16 @@ func (r *BaseRequest) GetHeaders() map[string]string {
 	return r.headers
 }
 
+func (r *BaseRequest) HasHeader(name string) bool {
+	_, ok := r.GetHeaders()[name]
+	return ok
+}
+
+func (r *BaseRequest) GetHeader(name string) string {
+	s, _ := r.GetHeaders()[name]
+	return s
+}
+
 // SetUrl set scheme/domain/path of r according to urlstr
 func (r *BaseRequest) SetUrl(urlstr string) {
 	u, err := url.Parse(urlstr)
@@ -184,6 +198,34 @@ func (r *BaseRequest) SetHeaders(headers map[string]string) {
 	for k, v := range headers {
 		r.headers[k] = v
 	}
+}
+
+func (r *BaseRequest) IsContentTypeForm() bool {
+	if r.GetHeader("Content-Type") == "application/x-www-form-urlencoded" {
+		return true
+	}
+	return false
+}
+
+func (r *BaseRequest) IsContentTypeJSON() bool {
+	if r.GetHeader("Content-Type") == "application/json" {
+		return true
+	}
+	return false
+}
+
+func (r *BaseRequest) GetBody() (io.Reader, error) {
+	if r.IsContentTypeForm() {
+		return strings.NewReader(GetUrlQueriesEncoded(r.GetParams())), nil
+	}
+
+	// default json
+	reqBody, err := json.Marshal(r)
+	if err != nil {
+		msg := fmt.Sprintf("marshal request failed, %s", err)
+		return nil, errors.New(msg)
+	}
+	return bytes.NewReader(reqBody), nil
 }
 
 // todo
@@ -268,6 +310,7 @@ func GetUrlQueriesEncoded(params map[string]string) string {
 	values := url.Values{}
 	for key, value := range params {
 		if value != "" {
+			// values.Set(key, value)
 			values.Add(key, value)
 		}
 	}
