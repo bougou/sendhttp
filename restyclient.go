@@ -1,11 +1,12 @@
 package sendhttp
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http/httputil"
+	"strings"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -39,14 +40,14 @@ func (c *RestyClient) Send(request Request, response Response) error {
 	if err != nil {
 		return err
 	}
-	var buf bytes.Buffer
-	_, err = buf.ReadFrom(bodyReader)
+	buf := new(strings.Builder)
+	_, err = io.Copy(buf, bodyReader)
 	if err != nil {
-		log.Printf("read request body failed because %s", err)
+		log.Printf("read bodyReader failed because %s", err)
 		return err
 	}
-	bodyBytes := buf.Bytes()
-	restyReq.SetBody(bodyBytes)
+	bodyStr := buf.String()
+	restyReq.SetBody(bodyStr)
 
 	// the restyReq.RawRequest is ONLY set after restyReq.Execute
 	restyResp, err := restyReq.Execute(request.GetMethod(), request.GetUrl())
@@ -62,7 +63,7 @@ func (c *RestyClient) Send(request Request, response Response) error {
 			log.Printf("[ERROR] dump request failed because %s", err)
 			return err
 		}
-		log.Printf("[DEBUG] http request:\n%s%s", reqbytes, bodyBytes)
+		log.Printf("[DEBUG] http request:\n%s%s", reqbytes, bodyStr)
 	}
 
 	if c.debug {

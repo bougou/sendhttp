@@ -4,7 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path"
+	"strings"
 	"testing"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 type fakeRequest struct {
@@ -190,6 +195,46 @@ func Test_RestyClientForm(t *testing.T) {
 		"a": "hello",
 		"b": "100:200",
 	})
+	c.Complete(request)
+
+	response, err := c.Fake(request)
+	if err != nil {
+		t.Error(err)
+	}
+	got := string(response.GetRaw())
+	expected := mockGetResposne + "\n"
+
+	if got != expected {
+		t.Errorf("response not matched, expected: %s, got: %s", expected, got)
+	}
+}
+
+func Test_ClientMultipart(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, mockGetResposne)
+	}))
+	defer server.Close()
+
+	c := newFakeHttpClient(server.URL)
+	c.client.SetDebug(true)
+	request := newFakeRequest()
+	request.SetHeaders(map[string]string{
+		"Content-Type": "multipart/form-data",
+	})
+	request.SetParams(map[string]string{
+		"limit":  "10",
+		"offset": "20",
+	})
+	request.SetFormParams(map[string]string{
+		"a": "hello",
+		"b": "100:200",
+	})
+
+	home, _ := homedir.Dir()
+	file, _ := os.Open(path.Join(home, "file1.txt"))
+	request.AddMultipart("key1", "file1.txt", file)
+	request.AddMultipart("key2", "", strings.NewReader("hello world"))
+	request.AddMultipart("key3", "", strings.NewReader("test test"))
 	c.Complete(request)
 
 	response, err := c.Fake(request)

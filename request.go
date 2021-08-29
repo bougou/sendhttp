@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 
 	//"log"
 
@@ -37,6 +38,7 @@ type Request interface {
 	GetParams() map[string]string
 	GetFormParams() map[string]string
 	GetHeaders() map[string]string
+	GetMultipart() []*multipartValue
 
 	SetMethod(string)
 	SetUrl(url string)
@@ -46,16 +48,41 @@ type Request interface {
 	SetParams(map[string]string)
 	SetFormParams(map[string]string)
 	SetHeaders(map[string]string)
+	AddMultipart(fieldname string, filename string, value io.Reader)
 
 	CheckValid() error
 
 	IsContentTypeForm() bool
 	IsContentTypeJSON() bool
+	IsContentTypeMultipart() bool
 }
 
 func GetBody(request Request) (io.Reader, error) {
 	if request.IsContentTypeForm() {
 		return strings.NewReader(GetUrlQueriesEncoded(request.GetFormParams())), nil
+	}
+
+	if request.IsContentTypeMultipart() {
+		buf := new(bytes.Buffer)
+		w := multipart.NewWriter(buf)
+		for _, m := range request.GetMultipart() {
+			var formWriter io.Writer
+			var err error
+			if m.FileName != "" {
+				formWriter, err = w.CreateFormFile(m.FieldName, m.FileName)
+			} else {
+				formWriter, err = w.CreateFormField(m.FieldName)
+			}
+			if err != nil {
+				return nil, err
+			}
+			io.Copy(formWriter, m.Value)
+		}
+		// Reset request Content-Type Header, fill the boundary
+		request.SetHeaders(map[string]string{
+			"Content-Type": w.FormDataContentType(),
+		})
+		return buf, nil
 	}
 
 	// default json
@@ -79,6 +106,14 @@ type BaseRequest struct {
 	formParams map[string]string
 
 	headers map[string]string
+
+	multipart []*multipartValue
+}
+
+type multipartValue struct {
+	FieldName string // must
+	FileName  string // pass a empty value if not a file
+	Value     io.Reader
 }
 
 var _ Request = (*BaseRequest)(nil)
@@ -89,6 +124,7 @@ func NewBaseRequest() *BaseRequest {
 		params:     make(map[string]string),
 		formParams: make(map[string]string),
 		headers:    make(map[string]string),
+		multipart:  make([]*multipartValue, 0),
 	}
 
 	return r
@@ -160,6 +196,10 @@ func (r *BaseRequest) GetHeader(name string) string {
 	return s
 }
 
+func (r *BaseRequest) GetMultipart() []*multipartValue {
+	return r.multipart
+}
+
 // SetUrl set scheme/domain/path of r according to urlstr
 func (r *BaseRequest) SetUrl(urlstr string) {
 	u, err := url.Parse(urlstr)
@@ -225,12 +265,25 @@ func (r *BaseRequest) SetHeaders(headers map[string]string) {
 	}
 }
 
+func (r *BaseRequest) AddMultipart(fieldname string, filename string, value io.Reader) {
+	v := &multipartValue{
+		FieldName: fieldname,
+		FileName:  filename,
+		Value:     value,
+	}
+	r.multipart = append(r.multipart, v)
+}
+
 func (r *BaseRequest) IsContentTypeForm() bool {
 	return r.GetHeader("Content-Type") == "application/x-www-form-urlencoded"
 }
 
 func (r *BaseRequest) IsContentTypeJSON() bool {
 	return r.GetHeader("Content-Type") == "application/json"
+}
+
+func (r *BaseRequest) IsContentTypeMultipart() bool {
+	return r.GetHeader("Content-Type") == "multipart/form-data"
 }
 
 // todo
