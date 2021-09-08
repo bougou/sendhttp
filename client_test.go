@@ -21,14 +21,14 @@ type fakeResponse struct {
 	MSG           string `json:"msg"`
 }
 
-// fakeHttpClient test HttpClient
-type fakeHttpClient struct {
+// fakeClient1 test HttpClient
+type fakeClient1 struct {
 	client *HttpClient
 	url    string
 }
 
-// fakeRestyClient test RestyClient
-type fakeRestyClient struct {
+// fakeClient2 test RestyClient
+type fakeClient2 struct {
 	client *RestyClient
 	url    string
 }
@@ -46,28 +46,28 @@ func newFakeResponse() *fakeResponse {
 	}
 }
 
-func newFakeHttpClient(url string) *fakeHttpClient {
-	return &fakeHttpClient{
+func newFakeHttpClient(url string) *fakeClient1 {
+	return &fakeClient1{
 		client: NewHttpClient(),
 		url:    url,
 	}
 }
 
-func newFakeRestyClient(url string) *fakeRestyClient {
-	return &fakeRestyClient{
+func newFakeRestyClient(url string) *fakeClient2 {
+	return &fakeClient2{
 		client: NewRestyClient(),
 		url:    url,
 	}
 }
 
-func (c *fakeHttpClient) Complete(r Request) error {
+func (c *fakeClient1) Complete(r Request) error {
 	r.SetMethod(GET)
 	r.SetUrl(c.url)
 	r.SetPath("/")
 	return nil
 }
 
-func (c *fakeRestyClient) Complete(r Request) error {
+func (c *fakeClient2) Complete(r Request) error {
 	r.SetMethod(GET)
 	r.SetUrl(c.url)
 	r.SetPath("/")
@@ -75,13 +75,13 @@ func (c *fakeRestyClient) Complete(r Request) error {
 }
 
 // Fake is normally your exported method for your client
-func (c *fakeHttpClient) Fake(request *fakeRequest) (response *fakeResponse, err error) {
+func (c *fakeClient1) Fake(request *fakeRequest) (response *fakeResponse, err error) {
 	response = newFakeResponse()
 	err = c.client.Send(request, response)
 	return
 }
 
-func (c *fakeRestyClient) Fake(request *fakeRequest) (response *fakeResponse, err error) {
+func (c *fakeClient2) Fake(request *fakeRequest) (response *fakeResponse, err error) {
 	response = newFakeResponse()
 	err = c.client.Send(request, response)
 	return

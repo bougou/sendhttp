@@ -29,7 +29,15 @@ defines a `Send(request Request, response Response) error` method.
 
 In your business code, you can directly embeds `RestyClient` or `HttpClient` in your own client struct.
 
-**Warning**: Currently, the `HttpClient` and `RestyClient` CAN ONLY handle **json** compatible request and response. So your business request and response struct MUST can be marshaled to or unmarshaled from plain json.
+## Features
+
+Currently, supported content types of the HTTP Request are:
+
+- "application/json"
+- "application/x-www-form-urlencoded"
+- "multipart/form-data"
+
+And, only JSON format HTTP Response are supported. So your business response struct MUST can be unmarshaled from plain json.
 
 ## example
 
@@ -63,21 +71,24 @@ func NewFooClient() *FooClient {
 2. Then, define the request and response struct which describe the REST API's input and output.
 
 ```go
+// define the business request
 type ListMoviesRequest struct {
   *sendhttp.BaseRequest
 
   // define other fields if the request contains json body
 }
 
+// define a function to create a business request object
 func NewListMoviesRequest() *ListMoviesRequest{
   return &ListMoviesRequest{
-    // Must init the BaseRequest, or else you might encounter runtime nil pointer panic
+    // Note, MUST init the BaseRequest, or else you might encounter runtime nil pointer panic
     BaseRequest: sendhttp.NewBaseRequest(),
 
     // init other fields if necessary
   }
 }
 
+// define the business response
 type ListMoviesResonse struct {
   *sendhttp.BaseResponse
 
@@ -85,9 +96,10 @@ type ListMoviesResonse struct {
   Items []Movie `json:"items"`
 }
 
+// define a function to create a business response object
 func NewListMoviesResponse() *ListMoviesResonse{
   return &ListMoviesResonse{
-    // Must init the BaseResponse, or else you might encounter runtime nil pointer panic
+    // Note, MUST init the BaseResponse, or else you might encounter runtime nil pointer panic
     BaseResponse: sendhttp.NewBaseResponse(),
 
     // init other fields if necessary
@@ -101,7 +113,7 @@ type Movie struct {
 }
 ```
 
-3. Define a method.
+3. Define a method as your SDK exported method.
 
 ```go
 func (c *Client) ListMovies(request *ListMoviesRequest) (response *ListMoviesResonse, err error) {
@@ -110,9 +122,9 @@ func (c *Client) ListMovies(request *ListMoviesRequest) (response *ListMoviesRes
   // normally your will
   // c.Complete(request)
 
-  // Must init the response object before call Send(request, response), or else you might encounter runtime nil pointer panic
-  resonse := NewListMoviesResponse()
-  err c.client.Send(request, response)
+  resonse = NewListMoviesResponse()
+  // The main logic of this function is to call the Send method provided by sendhttp.Client
+  err = c.client.Send(request, response)
 
   return
 }
