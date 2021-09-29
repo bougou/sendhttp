@@ -60,6 +60,7 @@ func (c *HttpClient) Send(request Request, response Response) error {
 	}
 
 	if c.debug {
+		//  but is does not contain response body
 		outbytes, err := httputil.DumpResponse(httpResponse, false)
 		if err != nil {
 			log.Printf("[ERROR] dump response failed because %s", err)

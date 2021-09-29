@@ -12,62 +12,20 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-type fakeRequest struct {
-	*BaseRequest
-}
-
-type fakeResponse struct {
-	*BaseResponse `json:"-"`
-	MSG           string `json:"msg"`
-}
-
-// fakeClient1 test HttpClient
-type fakeClient1 struct {
+// fakeHttpClient test HttpClient
+type fakeHttpClient struct {
 	client *HttpClient
 	url    string
 }
 
-// fakeClient2 test RestyClient
-type fakeClient2 struct {
-	client *RestyClient
-	url    string
-}
-
-func newFakeRequest() *fakeRequest {
-	return &fakeRequest{
-		BaseRequest: NewBaseRequest(),
-	}
-
-}
-
-func newFakeResponse() *fakeResponse {
-	return &fakeResponse{
-		BaseResponse: NewBaseResponse(),
-	}
-}
-
-func newFakeHttpClient(url string) *fakeClient1 {
-	return &fakeClient1{
+func newFakeHttpClient(url string) *fakeHttpClient {
+	return &fakeHttpClient{
 		client: NewHttpClient(),
 		url:    url,
 	}
 }
 
-func newFakeRestyClient(url string) *fakeClient2 {
-	return &fakeClient2{
-		client: NewRestyClient(),
-		url:    url,
-	}
-}
-
-func (c *fakeClient1) Complete(r Request) error {
-	r.SetMethod(GET)
-	r.SetUrl(c.url)
-	r.SetPath("/")
-	return nil
-}
-
-func (c *fakeClient2) Complete(r Request) error {
+func (c *fakeHttpClient) Complete(r Request) error {
 	r.SetMethod(GET)
 	r.SetUrl(c.url)
 	r.SetPath("/")
@@ -75,21 +33,15 @@ func (c *fakeClient2) Complete(r Request) error {
 }
 
 // Fake is normally your exported method for your client
-func (c *fakeClient1) Fake(request *fakeRequest) (response *fakeResponse, err error) {
+func (c *fakeHttpClient) Fake(request *fakeRequest) (response *fakeResponse, err error) {
 	response = newFakeResponse()
 	err = c.client.Send(request, response)
 	return
 }
-
-func (c *fakeClient2) Fake(request *fakeRequest) (response *fakeResponse, err error) {
-	response = newFakeResponse()
-	err = c.client.Send(request, response)
-	return
-}
-
-var mockGetResposne = `{"msg": "Hello, World"}`
 
 func TestHttpClient(t *testing.T) {
+	var mockGetResposne = `{"msg": "Hello, World"}`
+
 	// server.URL returns the randomly listened address, like "http://127.0.0.1:58713"
 	var server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Note, the output contains an extra line break character
@@ -115,30 +67,9 @@ func TestHttpClient(t *testing.T) {
 	}
 }
 
-func TestRestyClient(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, mockGetResposne)
-	}))
-	defer server.Close()
-
-	c := newFakeRestyClient(server.URL)
-	c.client.SetDebug(true)
-	request := newFakeRequest()
-	c.Complete(request)
-
-	response, err := c.Fake(request)
-	if err != nil {
-		t.Error(err)
-	}
-	got := string(response.GetRaw())
-	expected := mockGetResposne + "\n"
-
-	if got != expected {
-		t.Errorf("response not matched, expected: %s, got: %s", expected, got)
-	}
-}
-
 func TestHttpClientForm(t *testing.T) {
+	var mockGetResposne = `{"msg": "Hello, World"}`
+
 	// server.URL returns the randomly listened address, like "http://127.0.0.1:58713"
 	var server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Note, the output contains an extra line break character
@@ -175,41 +106,9 @@ func TestHttpClientForm(t *testing.T) {
 	}
 }
 
-func Test_RestyClientForm(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, mockGetResposne)
-	}))
-	defer server.Close()
-
-	c := newFakeRestyClient(server.URL)
-	c.client.SetDebug(true)
-	request := newFakeRequest()
-	request.SetHeaders(map[string]string{
-		"Content-Type": "application/x-www-form-urlencoded",
-	})
-	request.SetParams(map[string]string{
-		"limit":  "10",
-		"offset": "20",
-	})
-	request.SetFormParams(map[string]string{
-		"a": "hello",
-		"b": "100:200",
-	})
-	c.Complete(request)
-
-	response, err := c.Fake(request)
-	if err != nil {
-		t.Error(err)
-	}
-	got := string(response.GetRaw())
-	expected := mockGetResposne + "\n"
-
-	if got != expected {
-		t.Errorf("response not matched, expected: %s, got: %s", expected, got)
-	}
-}
-
 func Test_ClientMultipart(t *testing.T) {
+	var mockGetResposne = `{"msg": "Hello, World"}`
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, mockGetResposne)
 	}))
