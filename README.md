@@ -128,3 +128,54 @@ func (c *Client) ListMovies(request *ListMoviesRequest) (response *ListMoviesRes
 
   return
 }
+```
+
+4. Fill extra information for request.
+
+If all API calls uses the same HTTP method, the same url, the same content-type, the same authorization,
+normally you should provide an extra method on the client to fill these extra request information.
+
+And In each exported sdk method, you need call `c.Complete(request)` before calling `c.client.Send(request, response)`.
+
+```go
+func (c *Client) Complete(request Request) error {
+  request.SetScheme("https") // set scheme
+  request.SetDomain("domain.com") // set domain
+  request.SetHeaders(map[string]string{}) // set any request headers
+  // you can check the methods of the Request interface to find which methods you can use.
+}
+```
+
+5. Fill extra information for request inside each method.
+
+If each SDK method needs to call different url endpoints or any other different request params,
+you can set these params inside the method itself.
+
+```go
+func (c *Client) ListMovies(request *ListMoviesRequest) (response *ListMoviesResonse, err error) {
+  path = "/ListMovies"
+  url := c.url + path                       // concatenate the final url
+  request.SetUrl(url)                       // set the url on the request
+  request.SetHeaders(map[string]string{})   // set other params
+
+
+  resonse = NewListMoviesResponse()
+  // The main logic of this function is to call the Send method provided by sendhttp.Client
+  err = c.client.Send(request, response)
+
+  return
+}
+
+func (c *Client) GetMovie(request *GetMovieRequest) (response *GetMovieResonse, err error) {
+  path = "/GetMovie"
+  url := c.url + path                       // concatenate the final url
+  request.SetUrl(url)                       // set the url on the request
+  request.SetHeaders(map[string]string{})   // set other params
+
+  resonse = NewGetMovieResponse()
+  // The main logic of this function is to call the Send method provided by sendhttp.Client
+  err = c.client.Send(request, response)
+
+  return
+}
+```
